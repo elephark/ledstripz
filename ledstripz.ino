@@ -74,21 +74,20 @@ void setup() {
 
 // main loop function
 void loop() {
-    if (millis() - encoder_delay_timer > encoder_delay) {
-      encoder_delay_timer = millis();
-      serviceEncoders();
+  if (millis() - encoder_delay_timer > encoder_delay) {
+    encoder_delay_timer = millis();
+    serviceEncoders();
+  }
+  if (millis() - led_delay_timer > led_delay) {
+    led_delay_timer = millis();
+    serviceLeds();
+    static int enc_debug_count = 0;
+    if (enc_debug_count++ >= 100) {
+      unsigned long enc_debug_timer_diff = millis() - led_delay_timer;
+      Serial.println(str + "serviceLeds() took " + enc_debug_timer_diff + " ms");
+      enc_debug_count = 0;
     }
-    if (millis() - led_delay_timer > led_delay) {
-      led_delay_timer = millis();
-      serviceLeds();
-      static int enc_debug_count = 0;
-      if (enc_debug_count++ >= 100) {
-        unsigned long enc_debug_timer_diff = millis() - led_delay_timer;
-        Serial.println(str + "serviceLeds() took " + enc_debug_timer_diff + " ms");
-        enc_debug_count = 0;
-      }
-    }
-  delay(1);
+  }
 }
 
 
