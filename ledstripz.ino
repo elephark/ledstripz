@@ -179,7 +179,7 @@ void serviceTestChase() {
 
 
 void serviceAllSolid() {
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < NUM_LEDS; i++) {
     leds[i] = curSolidColor;
   }
   FastLED.show();
