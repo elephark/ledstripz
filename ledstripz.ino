@@ -24,9 +24,10 @@ const int led = LED_BUILTIN;
 const int encoderCSPin = 10;
 SPISettings settings_74HC165(2000000, MSBFIRST, SPI_MODE0);
 CRGB leds[NUM_LEDS];
-unsigned int msTimer = 0; // very gross, but I'm feeling very lazy rn
-int led_delay = 50; // in ms
-int encoder_delay = 1; // in ms
+unsigned long led_delay_timer;
+unsigned long encoder_delay_timer;
+unsigned int led_delay = 100;         // in ms
+unsigned int encoder_delay = 1;       // in ms
 
 // for test chase mode
 unsigned int testChaseCurLed = 0;
@@ -61,15 +62,21 @@ void setup() {
   pinMode(encoderCSPin, OUTPUT);
   SPI.begin();
   SPI.setSCK(14);
+
+  led_delay_timer = millis();
+  encoder_delay_timer = millis();
 }
 
 // main loop function
 void loop() {
-  // if (!(msTimer % button_delay)) { serviceButtons(); }
-   if (!(msTimer % encoder_delay)) { serviceEncoders(); }
-   if (!(msTimer % led_delay)) { serviceLeds(); }
-  msTimer++;
-  if (msTimer >= 300) { msTimer = 0; } // should be a common multiple of the above, give or take
+    if (millis() - encoder_delay_timer > encoder_delay) {
+      encoder_delay_timer = millis();
+      serviceEncoders();
+    }
+    if (millis() - led_delay_timer > led_delay) {
+      led_delay_timer = millis();
+      serviceLeds();
+    }
   delay(1);
 }
 
