@@ -44,16 +44,28 @@ const uint8_t encStepSize = 4;
 // This makes serial printing work better...
 String str;
 
+// Bump: On some trigger, brightness bumps up by some degree.
+// It gradually decays back to normal.
+uint8_t bumpValue = 0;
+uint8_t bumpDegree = 50;
+uint8_t bumpDecay = 4;
+unsigned long bump_delay_timer;
+unsigned int bump_delay = 100;        // in ms
+
 // function prototypes
 
 void serviceLeds();
 void serviceButtons();
 void serviceEncoders();
+void serviceBump();
 
 void serviceTestChase();
 void serviceAllSolid();
 void serviceTwinkleSolid();
 void serviceDebugBits();
+
+void bump();
+
 
 // main setup function
 void setup() {
@@ -70,6 +82,7 @@ void setup() {
 
   led_delay_timer = millis();
   encoder_delay_timer = millis();
+  bump_delay_timer = millis();
 }
 
 // main loop function
@@ -87,6 +100,10 @@ void loop() {
       Serial.println(str + "serviceLeds() took " + enc_debug_timer_diff + " ms");
       enc_debug_count = 0;
     }
+  }
+  if (millis() - bump_delay_timer > bump_delay) {
+    bump_delay_timer = millis();
+    serviceBump();
   }
 }
 
@@ -229,13 +246,15 @@ void serviceTwinkleSolid() {
       }
     }
   }
-  
+
   for (int i = 0; i < NUM_LEDS; i++) {
     leds[i] = curSolidColor;
     CHSV tmpColor = curSolidColor;
     tmpColor.val += ((wavePos[i & 0x07] & 0x07) * twinkleDepthStep);
     tmpColor.hue += ((wavePos[i & 0x07] & 0x07) * twinkleDepthStep) & 0xff;
 //    tmpColor.sat -= (((wavePos[i & 0x07] + firingOrder[i & 0x07]) & 0x07) * twinkleDepthStep / 2) & 0xff;
+    if ((uint16_t)tmpColor.val + bumpValue > 255) { tmpColor.val = 255; } // prevent overflow
+    else { tmpColor.val += bumpValue; }
     leds[i] = CHSV(tmpColor);
 //      leds[i].setHSV(tmpColor);
   }
@@ -261,4 +280,14 @@ void serviceDebugBits() {
     }
   }
   FastLED.show();
+}
+
+void serviceBump() {
+  // Decrement by the decay magnitude. If it underflows, just go back to 0.
+  bumpValue -= bumpDecay;
+  if (bumpValue > bumpDegree) { bumpValue = 0; }
+}
+
+void bump() {
+  bumpValue = bumpDegree;
 }
