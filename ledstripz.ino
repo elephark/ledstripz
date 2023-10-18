@@ -41,6 +41,8 @@ uint8_t dummyValue = 0;
 uint8_t *encParam[2] = { &curSolidColor.hue, &curSolidColor.val };
 const uint8_t encStepSize = 4;
 
+// This makes serial printing work better...
+String str;
 
 // function prototypes
 
@@ -55,6 +57,9 @@ void serviceDebugBits();
 
 // main setup function
 void setup() {
+  Serial.begin(9600);
+  Serial.println("ledstripz: Serial port is up.");
+
   pinMode(led, OUTPUT);
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
   FastLED.clear(); // necessary? iunno
@@ -76,6 +81,12 @@ void loop() {
     if (millis() - led_delay_timer > led_delay) {
       led_delay_timer = millis();
       serviceLeds();
+      static int enc_debug_count = 0;
+      if (enc_debug_count++ >= 100) {
+        unsigned long enc_debug_timer_diff = millis() - led_delay_timer;
+        Serial.println(str + "serviceLeds() took " + enc_debug_timer_diff + " ms");
+        enc_debug_count = 0;
+      }
     }
   delay(1);
 }
