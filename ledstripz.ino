@@ -1,5 +1,6 @@
 #include <SPI.h>
 #include <FastLED.h>
+#include <Bounce2.h>
 
 #define NUM_LEDS 150
 #define DATA_PIN 17
@@ -15,6 +16,14 @@ typedef enum mode {
   // 
   modeCount
 } Mode;
+
+typedef enum buttonNames {
+  btnPower,     // turns lights on/off
+  btnMode,      // cycles through available modes
+  // btnFrontWall, // en/disables lights on the front wall
+
+  btnCount
+} ButtonNames;
 
 // variables
 
@@ -52,6 +61,15 @@ uint8_t bumpDecay = 4;
 unsigned long bump_delay_timer;
 unsigned int bump_delay = 100;        // in ms
 
+// The actual (well, Arduino-aliased) pins assigned to each button.
+const int buttonPins[btnCount] {
+  8, // btnPower     (blue)
+  9, // btnMode      (yellow)
+  // 7, // btnFrontWall (green)
+};
+
+Bounce* btns[btnCount];
+
 // function prototypes
 
 void serviceLeds();
@@ -80,6 +98,13 @@ void setup() {
   SPI.begin();
   SPI.setSCK(14);
 
+  for (uint8_t i = 0; i < btnCount; i++) {
+    pinMode(buttonPins[i], INPUT_PULLUP);
+    btns[i] = new Bounce();
+    btns[i]->attach(buttonPins[i], INPUT_PULLUP);
+    btns[i]->interval(10);
+  }
+
   led_delay_timer = millis();
   encoder_delay_timer = millis();
   bump_delay_timer = millis();
@@ -87,6 +112,7 @@ void setup() {
 
 // main loop function
 void loop() {
+  serviceButtons();
   if (millis() - encoder_delay_timer > encoder_delay) {
     encoder_delay_timer = millis();
     serviceEncoders();
@@ -135,7 +161,15 @@ void serviceLeds() {
 }
 
 void serviceButtons() {
-  
+  for (uint8_t i = 0; i < btnCount; i++) {
+    btns[i]->update();
+  }
+  if (btns[btnPower]->fell()) {
+    bump();
+  }
+  if (btns[btnMode]->fell()) {
+    curSolidColor.hue += 33;
+  }
 }
 
 void serviceEncoders() {  
