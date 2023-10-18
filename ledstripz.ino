@@ -216,11 +216,6 @@ void serviceTwinkleSolid() {
   if (curSolidColor.val + targetTwinkleDepth > 255) { twinkleDepth = 255 - curSolidColor.val; }
   uint8_t twinkleDepthStep = twinkleDepth / 8;
 
-  // super janky timer ay
-  // 1 4 7 3 8 5 2 6
-  const uint8_t firingOrder[8] = { 1, 4, 7, 3, 0, 5, 2, 6 };
-//  static uint8_t wavePos[8]; // debug lol?
-//  wavePos = (wavePos + 1) & 0x07;
   for (uint8_t i = 0; i < 8; i++) {
     if (!waveDir[i]) {
       wavePos[i]++;
