@@ -137,7 +137,7 @@ void loop() {
 
 // auxiliary functions past this point
 
-
+// Directory function that passes control based on our mode.
 void serviceLeds() {
   switch(curMode) {
   case TestChase:
@@ -160,6 +160,7 @@ void serviceLeds() {
   }
 }
 
+// Read the buttons and figure out what to do if they've been pushed.
 void serviceButtons() {
   for (uint8_t i = 0; i < btnCount; i++) {
     btns[i]->update();
@@ -172,6 +173,7 @@ void serviceButtons() {
   }
 }
 
+// Read the encoders and figure out what to do if they've moved.
 void serviceEncoders() {  
   // first, read the encoders' raw values
 
@@ -234,6 +236,9 @@ void serviceEncoders() {
 }
 
 
+// Test Chase mode:
+// A single LED chases from one end to the other. Makes a good basic test.
+// (Actually, we use two of them with different colors...it looks cooler.)
 void serviceTestChase() {
   FastLED.clear();
   leds[testChaseCurLed] = CRGB::HotPink;
@@ -245,7 +250,8 @@ void serviceTestChase() {
   if (testChaseCurLed >= NUM_LEDS - 1) { testChaseCurLed = 0; }
 }
 
-
+// All Solid mode:
+// All LEDs are assigned the same color, adjustable by the encoders.
 void serviceAllSolid() {
   for (int i = 0; i < NUM_LEDS; i++) {
     leds[i] = curSolidColor;
@@ -257,7 +263,9 @@ void serviceAllSolid() {
 static uint8_t wavePos[8] = { 1, 4, 7, 3, 0, 5, 2, 6 };
 static uint8_t waveDir[8] = { 0, 1, 0, 1, 0, 1, 0, 1 };
 
-// twinkle twinkle little aaaaaaaaa
+// Twinkle Solid mode:
+// A base color is assigned from which individual LEDs deviate slightly over time in hue and value.
+// This results in a pleasing twinkling effect.
 void serviceTwinkleSolid() {
   FastLED.clear();
   // bounds check
@@ -281,18 +289,21 @@ void serviceTwinkleSolid() {
     }
   }
 
+  // Populate each LED.
   for (int i = 0; i < NUM_LEDS; i++) {
     leds[i] = curSolidColor;
     CHSV tmpColor = curSolidColor;
     tmpColor.val += ((wavePos[i & 0x07] & 0x07) * twinkleDepthStep);
     tmpColor.hue += ((wavePos[i & 0x07] & 0x07) * twinkleDepthStep) & 0xff;
-//    tmpColor.sat -= (((wavePos[i & 0x07] + firingOrder[i & 0x07]) & 0x07) * twinkleDepthStep / 2) & 0xff;
+
+    // Bump calculations
     if ((uint16_t)tmpColor.val + bumpValue > 255) { tmpColor.val = 255; } // prevent overflow
     else { tmpColor.val += bumpValue; }
-    leds[i] = CHSV(tmpColor);
-//      leds[i].setHSV(tmpColor);
-  }
+    if (bumpValue > tmpColor.sat) { tmpColor.sat = 0; }
+    else { tmpColor.sat -= bumpValue; }
 
+    leds[i] = CHSV(tmpColor);
+  }
 
   // debug: display a value
 //    for (int i = 0; i < 8; i++) {
@@ -301,10 +312,8 @@ void serviceTwinkleSolid() {
 //    }
 //  }
 
-  
   FastLED.show();
 }
-
 
 void serviceDebugBits() {
   FastLED.clear();
@@ -315,6 +324,7 @@ void serviceDebugBits() {
   }
   FastLED.show();
 }
+
 
 void serviceBump() {
   // Decrement by the decay magnitude. If it underflows, just go back to 0.
