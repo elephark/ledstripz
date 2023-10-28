@@ -3,6 +3,8 @@
 #define USE_WS2812SERIAL
 #include <FastLED.h>
 #include <Bounce2.h>
+#include "SparkFunLIS3DH.h"
+#include "Wire.h"
 
 #define NUM_LEDS 150
 
@@ -63,7 +65,7 @@ String str;
 // Bump: On some trigger, brightness bumps up by some degree.
 // It gradually decays back to normal.
 uint8_t bumpValue = 0;
-uint8_t bumpDegree = 50;
+uint8_t bumpDegree = 35;
 uint8_t bumpDecay = 4;
 uint32_t bump_delay_timer;
 const uint32_t bump_delay = 100;        // in ms
@@ -77,12 +79,29 @@ const int buttonPins[btnCount] {
 
 Bounce* btns[btnCount];
 
+LIS3DH imu;
+
+uint32_t imu_delay_timer;
+const uint32_t imu_delay = 30;
+uint32_t cooldownTimer;
+uint32_t ledTimer;
+const uint32_t ledCooldown = 10; // LED blink duration in ms
+bool ledIsOn = false;
+const uint32_t cooldownTimer_thresh = 250; // in ms
+float aX;
+float aY;
+float aZ;
+float aMagnitude;
+const float aMagnitude_thresh = 0.073;
+
+
 // function prototypes
 
 void serviceLeds();
 void serviceButtons();
 void serviceEncoders();
 void serviceBump();
+void serviceIMU();
 
 void serviceTestChase();
 void serviceAllSolid();
@@ -113,6 +132,11 @@ void setup() {
     btns[i]->interval(10);
   }
 
+  imu.settings.accelSampleRate = 50;  // Hz.  Can be: 0,1,10,25,50,100,200,400,1600,5000 Hz
+  imu.settings.accelRange = 2;        // Max G force readable.  Can be: 2, 4, 8, 16
+  imu.begin();
+  imu.writeRegister(LIS3DH_CTRL_REG2, 0x08); // enable HPF
+
   led_delay_timer = millis();
   encoder_delay_timer = millis();
   bump_delay_timer = millis();
@@ -121,10 +145,22 @@ void setup() {
 // main loop function
 void loop() {
   serviceButtons();
+  
+  if (ledIsOn && (millis() - ledTimer > ledCooldown)) {
+    digitalWrite(LED_BUILTIN, LOW);
+    ledIsOn = false;
+  }
+  
+  if (millis() - imu_delay_timer > imu_delay) {
+    imu_delay_timer = millis();
+    serviceIMU();
+  }
+
   if (millis() - encoder_delay_timer > encoder_delay) {
     encoder_delay_timer = millis();
     serviceEncoders();
   }
+  
   if (millis() - led_delay_timer > led_delay) {
     led_delay_timer = millis();
     uint32_t enc_debug_timer = micros();
@@ -136,6 +172,7 @@ void loop() {
       enc_debug_count = 0;
     }
   }
+  
   if (millis() - bump_delay_timer > bump_delay) {
     bump_delay_timer = millis();
     serviceBump();
@@ -350,4 +387,26 @@ void serviceBump() {
 
 void bump() {
   bumpValue = bumpDegree;
+}
+
+void serviceIMU() {
+  aX = imu.readFloatAccelX();
+  aY = imu.readFloatAccelY();
+  aZ = imu.readFloatAccelZ();
+  aMagnitude = std::sqrt((aX * aX) + (aY * aY) + (aZ * aZ));
+
+  if ((aMagnitude > aMagnitude_thresh) && (millis() - cooldownTimer > cooldownTimer_thresh)) {
+    Serial.print("\nAccelerometer:\n");
+    Serial.print(" M = ");
+    Serial.println(aMagnitude, 4);
+
+    cooldownTimer = millis();
+
+    // Start the LED blink.
+    digitalWrite(LED_BUILTIN, HIGH);
+    ledIsOn = true;
+    ledTimer = millis();
+    // Also trigger a bump.
+    bump();
+  }
 }
