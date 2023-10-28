@@ -1,9 +1,16 @@
 #include <SPI.h>
+#include <WS2812Serial.h>
+#define USE_WS2812SERIAL
 #include <FastLED.h>
 #include <Bounce2.h>
 
 #define NUM_LEDS 150
-#define DATA_PIN 17
+
+// Usable pins:
+//   Teensy LC:   1, 4, 5, 24 (jumper to 17 to get 5V signal level)
+//   Teensy 4.0:  1, 8, 14, 17, 20, 24, 29, 39
+//   Teensy 4.1:  1, 8, 14, 17, 20, 24, 29, 35, 47, 53
+#define DATA_PIN 1
 
 typedef enum mode {
   TestChase,
@@ -42,7 +49,7 @@ unsigned int encoder_delay = 1;       // in ms
 unsigned int testChaseCurLed = 0;
 
 // for all solid mode
-CHSV curSolidColor(180, 160, 30);
+CHSV curSolidColor(180, 200, 60);
 
 // for the encoders
 uint8_t lastEncValue = 255;
@@ -91,8 +98,9 @@ void setup() {
   Serial.println("ledstripz: Serial port is up.");
 
   pinMode(led, OUTPUT);
-  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
-  FastLED.clear(); // necessary? iunno
+  // I can't tell you why it's BRG here and GRB using just WS2812B, but it is.
+  FastLED.addLeds<WS2812SERIAL, DATA_PIN, BRG>(leds, NUM_LEDS);
+  FastLED.clear();  // necessary? iunno
 
   pinMode(encoderCSPin, OUTPUT);
   SPI.begin();
