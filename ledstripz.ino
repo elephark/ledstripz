@@ -40,13 +40,13 @@ const int led = LED_BUILTIN;
 const int encoderCSPin = 10;
 SPISettings settings_74HC165(2000000, MSBFIRST, SPI_MODE0);
 CRGB leds[NUM_LEDS];
-unsigned long led_delay_timer;
-unsigned long encoder_delay_timer;
-unsigned int led_delay = 100;         // in ms
-unsigned int encoder_delay = 1;       // in ms
+uint32_t led_delay_timer;
+uint32_t encoder_delay_timer;
+const uint32_t led_delay = 100;         // in ms
+const uint32_t encoder_delay = 1;       // in ms
 
 // for test chase mode
-unsigned int testChaseCurLed = 0;
+uint16_t testChaseCurLed = 0;
 
 // for all solid mode
 CHSV curSolidColor(180, 200, 60);
@@ -65,8 +65,8 @@ String str;
 uint8_t bumpValue = 0;
 uint8_t bumpDegree = 50;
 uint8_t bumpDecay = 4;
-unsigned long bump_delay_timer;
-unsigned int bump_delay = 100;        // in ms
+uint32_t bump_delay_timer;
+const uint32_t bump_delay = 100;        // in ms
 
 // The actual (well, Arduino-aliased) pins assigned to each button.
 const int buttonPins[btnCount] {
@@ -127,11 +127,12 @@ void loop() {
   }
   if (millis() - led_delay_timer > led_delay) {
     led_delay_timer = millis();
+    uint32_t enc_debug_timer = micros();
     serviceLeds();
-    static int enc_debug_count = 0;
+    static int16_t enc_debug_count = 0;
     if (enc_debug_count++ >= 100) {
-      unsigned long enc_debug_timer_diff = millis() - led_delay_timer;
-      Serial.println(str + "serviceLeds() took " + enc_debug_timer_diff + " ms");
+      uint32_t enc_debug_timer_diff = micros() - enc_debug_timer;
+      Serial.println(str + "serviceLeds() took " + enc_debug_timer_diff + " us");
       enc_debug_count = 0;
     }
   }
@@ -261,7 +262,7 @@ void serviceTestChase() {
 // All Solid mode:
 // All LEDs are assigned the same color, adjustable by the encoders.
 void serviceAllSolid() {
-  for (int i = 0; i < NUM_LEDS; i++) {
+  for (uint16_t i = 0; i < NUM_LEDS; i++) {
     leds[i] = curSolidColor;
   }
   FastLED.show();
@@ -275,7 +276,7 @@ static uint8_t waveDir[8] = { 0, 1, 0, 1, 0, 1, 0, 1 };
 // A base color is assigned from which individual LEDs deviate slightly over time in hue and value.
 // This results in a pleasing twinkling effect.
 void serviceTwinkleSolid() {
-  FastLED.clear();
+  // FastLED.clear(); // commenting this out saves ~85us and doesn't appear to hurt anything.
   // bounds check
   uint16_t targetTwinkleDepth = 40;
   uint8_t twinkleDepth = targetTwinkleDepth;
@@ -298,19 +299,26 @@ void serviceTwinkleSolid() {
   }
 
   // Populate each LED.
-  for (int i = 0; i < NUM_LEDS; i++) {
-    leds[i] = curSolidColor;
-    CHSV tmpColor = curSolidColor;
-    tmpColor.val += ((wavePos[i & 0x07] & 0x07) * twinkleDepthStep);
-    tmpColor.hue += ((wavePos[i & 0x07] & 0x07) * twinkleDepthStep) & 0xff;
+  for (uint16_t i = 0; i < NUM_LEDS; i++) {
+    if (i < 8) {
+      leds[i] = curSolidColor;
+      CHSV tmpColor = curSolidColor;
+      tmpColor.val += ((wavePos[i & 0x07] & 0x07) * twinkleDepthStep);
+      tmpColor.hue += ((wavePos[i & 0x07] & 0x07) * twinkleDepthStep) & 0xff;
 
-    // Bump calculations
-    if ((uint16_t)tmpColor.val + bumpValue > 255) { tmpColor.val = 255; } // prevent overflow
-    else { tmpColor.val += bumpValue; }
-    if (bumpValue > tmpColor.sat) { tmpColor.sat = 0; }
-    else { tmpColor.sat -= bumpValue; }
+      // Bump calculations
+      if ((uint16_t)tmpColor.val + bumpValue > 255) { tmpColor.val = 255; } // prevent overflow
+      else { tmpColor.val += bumpValue; }
+      if (bumpValue > tmpColor.sat) { tmpColor.sat = 0; }
+      else { tmpColor.sat -= bumpValue; }
 
-    leds[i] = CHSV(tmpColor);
+      leds[i] = CHSV(tmpColor);
+    }
+    else {
+      // We did the calculations for the first group of 8, why do them again?
+      // This saves ~730us compared to doing those calculations again 142 times.
+      leds[i] = leds[i & 0x07];
+    }
   }
 
   // debug: display a value
@@ -325,7 +333,7 @@ void serviceTwinkleSolid() {
 
 void serviceDebugBits() {
   FastLED.clear();
-  for (int i = 0; i < 8; i++) {
+  for (uint8_t i = 0; i < 8; i++) {
     if (curSolidColor.val & (1 << i)) {
       leds[i] = curSolidColor;
     }
