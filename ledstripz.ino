@@ -13,7 +13,7 @@ typedef enum mode {
   ColorWave,
   RainbowWave,
   DebugBits,
-  // 
+  //
   modeCount
 } Mode;
 
@@ -139,7 +139,7 @@ void loop() {
 
 // Directory function that passes control based on our mode.
 void serviceLeds() {
-  switch(curMode) {
+  switch (curMode) {
   case TestChase:
     serviceTestChase();
     break;
@@ -174,7 +174,7 @@ void serviceButtons() {
 }
 
 // Read the encoders and figure out what to do if they've moved.
-void serviceEncoders() {  
+void serviceEncoders() {
   // first, read the encoders' raw values
 
   SPI.beginTransaction(settings_74HC165);
@@ -199,7 +199,7 @@ void serviceEncoders() {
 
   // we're going to vote on a direction
   static int8_t encoder_votes[2];
-  
+
   // no debouncing rn because I am a lazebones
 
   for (uint8_t i = 0; i < 2; i++) {
@@ -220,7 +220,7 @@ void serviceEncoders() {
   }
   // if we're in a detent, tally up any extant votes
   for (uint8_t i = 0; i < 2; i++) {
-      if (!encoder_positions[i] && encoder_votes[i]) {
+    if (!encoder_positions[i] && encoder_votes[i]) {
       if (encoder_votes[i] > 0) {
         encoder_votes[i] = 0;
         // make an adjustment upward
@@ -244,7 +244,7 @@ void serviceTestChase() {
   leds[testChaseCurLed] = CRGB::HotPink;
   leds[testChaseCurLed + 1] = CRGB::Purple;
   FastLED.show();
-  
+
   // wrap earlier, since we're setting multiple leds
   testChaseCurLed++;
   if (testChaseCurLed >= NUM_LEDS - 1) { testChaseCurLed = 0; }
