@@ -350,11 +350,18 @@ static uint8_t waveDir[8] = { 0, 1, 0, 1, 0, 1, 0, 1 };
 // This results in a pleasing twinkling effect.
 void serviceTwinkleSolid() {
   // FastLED.clear(); // commenting this out saves ~85us and doesn't appear to hurt anything.
-  // bounds check
-  uint16_t targetTwinkleDepth = 40;
+
+  // We want the depth of the twinkling effect to scale with brightness (well, value).
+  // This helps even out its appearance from a perceptual perspective.
+  const uint8_t minTwinkleDepth = 30; // Twinkle depth when curSolidColor.val == 0
+  const float curValWeight = 0.15625; // 5/32: Twinkle depth to add per val++; max is 70
+  uint16_t targetTwinkleDepth = minTwinkleDepth + (uint16_t)(curSolidColor.val * curValWeight);
   uint8_t twinkleDepth = targetTwinkleDepth;
   if (curSolidColor.val + targetTwinkleDepth > 255) { twinkleDepth = 255 - curSolidColor.val; }
   uint8_t twinkleDepthStep = twinkleDepth / 8;
+  // We don't want hue twinkle to scale with value, or at least not to the same degree.
+  // If it gets too high, what we see is less a twinkle than a "HEY LISTEN".
+  const uint8_t hueTwinkleDepthStep = 4;
 
   for (uint8_t i = 0; i < 8; i++) {
     if (!waveDir[i]) {
@@ -377,7 +384,7 @@ void serviceTwinkleSolid() {
       leds[i] = curSolidColor;
       CHSV tmpColor = curSolidColor;
       tmpColor.val += ((wavePos[i & 0x07] & 0x07) * twinkleDepthStep);
-      tmpColor.hue += ((wavePos[i & 0x07] & 0x07) * twinkleDepthStep) & 0xff;
+      tmpColor.hue += ((wavePos[i & 0x07] & 0x07) * hueTwinkleDepthStep) & 0xff;
 
       // Bump calculations
       if ((uint16_t)tmpColor.val + bumpValue > 255) { tmpColor.val = 255; } // prevent overflow
